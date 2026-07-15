@@ -13,8 +13,30 @@ if (!process.env.DATABASE_URL) {
 
 const sql = neon(process.env.DATABASE_URL);
 
+async function updateProgress(status, progress, step, error = null) {
+  if (process.env.SYNC_USER_EMAIL) {
+    try {
+      await sql`
+        INSERT INTO sync_status (email, status, progress, step, error, updated_at)
+        VALUES (${process.env.SYNC_USER_EMAIL}, ${status}, ${progress}, ${step}, ${error}, NOW())
+        ON CONFLICT (email) DO UPDATE SET
+          status = EXCLUDED.status,
+          progress = EXCLUDED.progress,
+          step = EXCLUDED.step,
+          error = EXCLUDED.error,
+          updated_at = EXCLUDED.updated_at;
+      `;
+    } catch (e) {
+      console.error('Erro ao atualizar progresso no banco:', e.message);
+    }
+  }
+}
+
+
 async function getAuthDetails() {
   console.log('[1/5] Iniciando o Puppeteer para autenticação no Paxtu 100...');
+  await updateProgress('running', 5, 'Iniciando Puppeteer para Paxtu 100...');
+  
   const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
@@ -29,6 +51,7 @@ async function getAuthDetails() {
 
   // Keycloak login
   console.log('[1/5] Efetuando login no Keycloak...');
+  await updateProgress('running', 10, 'Autenticando no Paxtu 100...');
   await page.waitForSelector('#kc-form-login', { timeout: 15000 });
   await page.type('#username', process.env.paxtu100_user);
   await page.type('#password', process.env.paxtu100_pass);
@@ -50,6 +73,7 @@ async function getAuthDetails() {
 
   await browser.close();
   console.log('[1/5] Autenticação concluída e credenciais obtidas.');
+  await updateProgress('running', 20, 'Autenticado no Paxtu 100 com sucesso.');
   return { csrfToken, cookieString };
 }
 
@@ -153,6 +177,9 @@ async function run() {
   console.log('================================================');
 
   try {
+    const sectionId = process.env.SYNC_SECAO_ID || '11009';
+    const sectionNome = process.env.SYNC_SECAO_NOME || 'Alcateia Waingunga';
+
     const { csrfToken, cookieString } = await getAuthDetails();
 
     const headers = {
@@ -163,7 +190,8 @@ async function run() {
       'referer': 'https://paxtu100.escoteiros.org.br/associado/lista'
     };
 
-    console.log('[2/5] Buscando lista de associados da Alcateia Waingunga...');
+    console.log(`[2/5] Buscando lista de associados da seção ID ${sectionId} (${sectionNome})...`);
+    await updateProgress('running', 25, `Buscando lista de associados da seção ${sectionNome}...`);
     const listHeaders = {
       ...headers,
       'x-requested-with': 'XMLHttpRequest',
@@ -176,7 +204,7 @@ async function run() {
 
     while (hasMore) {
       console.log(`  [+] Buscando página ${page}...`);
-      const listUrl = `https://paxtu100.escoteiros.org.br/associado/associado/lista/carregar?branch_id=Selecione&name=&registration=&category=Selecione&function=Selecione&section=11009&status=S&page=${page}`;
+      const listUrl = `https://paxtu100.escoteiros.org.br/associado/associado/lista/carregar?branch_id=Selecione&name=&registration=&category=Selecione&function=Selecione&section=${sectionId}&status=S&page=${page}`;
       const listRes = await axios.get(listUrl, { headers: listHeaders });
 
       const listHtml = listRes.data.html;
@@ -209,6 +237,7 @@ async function run() {
     }
 
     console.log(`[2/5] Total de associados localizados: ${associates.length}`);
+    await updateProgress('running', 35, `Encontrados ${associates.length} associados no Paxtu 100. Iniciando extração...`);
     associates.forEach((a, idx) => {
       console.log(`  ${idx + 1}. ID: ${a.id} | ${a.name} (Reg: ${a.registration})`);
     });
@@ -220,6 +249,9 @@ async function run() {
       const assocId = assoc.id;
       console.log(`  [+] Extraindo perfil do associado ${assoc.name} (ID: ${assocId})...`);
       
+      const currentProgress = 35 + Math.floor((processedCount / associates.length) * 60);
+      await updateProgress('running', currentProgress, `Processando no Paxtu 100: ${assoc.name} (${processedCount + 1}/${associates.length})`);
+
       try {
         const payload = `associate_code=${assocId}&_token=${csrfToken}`;
         const res = await axios.post('https://paxtu100.escoteiros.org.br/associado/perfil', payload, { headers });
@@ -245,7 +277,7 @@ async function run() {
           sexo,
           categoria: isEscotista ? 'Escotista' : (isLobinho ? 'Lobinho' : 'Outro'),
           ramo: isLobinho ? 'Lobinho' : null,
-          secao: 'Alcateia Waingunga'
+          secao: sectionNome
         };
 
         // 2. Progressões
@@ -294,9 +326,11 @@ async function run() {
     console.log(`   MIGRAÇÃO PAXTU 100 CONCLUÍDA EM ${duration}s`);
     console.log(`   Associados Processados: ${processedCount}/${associates.length}`);
     console.log('================================================');
+    await updateProgress('completed', 100, 'Sincronização do Paxtu 100 concluída com sucesso!');
 
   } catch (err) {
     console.error('Erro crítico no extrator Paxtu 100:', err.message);
+    await updateProgress('failed', 100, 'Erro crítico no extrator Paxtu 100', err.message);
   }
 }
 

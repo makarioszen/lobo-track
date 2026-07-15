@@ -1,8 +1,27 @@
 const express = require('express');
 const cors = require('cors');
-const { neon } = require('@neondatabase/serverless');
+const { neon, Pool } = require('@neondatabase/serverless');
 const path = require('path');
+const crypto = require('crypto');
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+async function runInSecaoTransaction(secaoNome, runQueriesFn) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query("SELECT set_config('app.current_secao_nome', $1, true)", [secaoNome]);
+    const result = await runQueriesFn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
 
 const app = express();
 app.use(cors());
@@ -16,6 +35,93 @@ if (!process.env.DATABASE_URL) {
 }
 
 const sql = neon(process.env.DATABASE_URL);
+
+// --- CRYPTOGRAPHY & AUTH HELPERS ---
+const JWT_SECRET = process.env.JWT_SECRET || 'secret-lobo-track';
+const PAXTU_KEY = crypto.scryptSync(process.env.PAXTU_ENCRYPTION_KEY || 'default-encryption-key-lobo-track', 'salt', 32);
+const IV_LENGTH = 16;
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, stored) {
+  if (!stored) return false;
+  const parts = stored.split(':');
+  if (parts.length !== 2) return false;
+  const [salt, hash] = parts;
+  const verifyHash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return hash === verifyHash;
+}
+
+function generateToken(payload) {
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
+  return `${header}.${body}.${signature}`;
+}
+
+function verifyToken(token) {
+  try {
+    const [header, body, signature] = token.split('.');
+    const expectedSignature = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
+    if (signature !== expectedSignature) return null;
+    return JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+  } catch (e) {
+    return null;
+  }
+}
+
+function encrypt(text) {
+  if (!text) return null;
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv('aes-256-cbc', PAXTU_KEY, iv);
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString('hex') + ':' + encrypted.toString('hex');
+}
+
+function decrypt(text) {
+  if (!text) return null;
+  try {
+    const textParts = text.split(':');
+    const iv = Buffer.from(textParts.shift(), 'hex');
+    const encryptedText = Buffer.from(textParts.join(':'), 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', PAXTU_KEY, iv);
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+  } catch (e) {
+    console.error('Decryption failed:', e.message);
+    return null;
+  }
+}
+
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Acesso negado. Token não fornecido.' });
+
+  const user = verifyToken(token);
+  if (!user) return res.status(403).json({ error: 'Token inválido ou expirado.' });
+
+  req.user = user;
+  next();
+}
+
+const SECTION_MAP = {
+  559: 'Alcatéia Francisco de Assis',
+  558: 'Alcatéia Seeonee',
+  11009: 'Alcateia Waingunga',
+  3031: 'Clã Ibirapitanga',
+  7145: 'Tropa Curupaiti',
+  12076: 'Tropa Orion',
+  2986: 'Tropa Senior Panará',
+  5164: 'Tropa Senior Uatumã',
+  2984: 'Tropa Tuiuti'
+};
 
 // Database initialization
 async function initDb() {
@@ -32,6 +138,47 @@ async function initDb() {
         UNIQUE (registro, chave)
       );
     `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS usuarios_sistema (
+        id SERIAL PRIMARY KEY,
+        nome VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        senha_hash VARCHAR(255) NOT NULL,
+        cargo VARCHAR(50) NOT NULL DEFAULT 'chefe',
+        secao_id INT NOT NULL DEFAULT 11009,
+        secao_nome VARCHAR(255) NOT NULL DEFAULT 'Alcateia Waingunga',
+        aprovado BOOLEAN NOT NULL DEFAULT FALSE,
+        paxtu_legado_user VARCHAR(255),
+        paxtu_legado_password_encrypted TEXT,
+        paxtu100_user VARCHAR(255),
+        paxtu100_password_encrypted TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS sync_status (
+        email VARCHAR(255) PRIMARY KEY REFERENCES usuarios_sistema(email) ON DELETE CASCADE,
+        status VARCHAR(50) NOT NULL DEFAULT 'idle',
+        progress INTEGER NOT NULL DEFAULT 0,
+        step VARCHAR(255),
+        error TEXT,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    // Seed default admin if none exists
+    const usersCount = await sql`SELECT COUNT(*) FROM usuarios_sistema`;
+    if (parseInt(usersCount[0].count, 10) === 0) {
+      console.log('Seeding default Akela account...');
+      const defaultHash = hashPassword('akela123');
+      await sql`
+        INSERT INTO usuarios_sistema (nome, email, senha_hash, cargo, secao_id, secao_nome, aprovado)
+        VALUES ('Akela', 'akela@lobotrack.com', ${defaultHash}, 'chefe', 11009, 'Alcateia Waingunga', true);
+      `;
+    }
+
     console.log('Database initialized successfully.');
   } catch (err) {
     console.error('Failed to initialize database table:', err);
@@ -288,29 +435,53 @@ function calculateAge(birthDateStr) {
 }
 
 // API endpoint to fetch consolidated equivalency data
-app.get('/api/equivalencia/lobinhos', async (req, res) => {
+app.get('/api/equivalencia/lobinhos', authenticateToken, async (req, res) => {
   try {
-    // 1. Fetch data from Neon DB
-    const associadosLegado = await sql`
-      SELECT id_associado, registro, nome, data_nascimento, secao, ramo, sexo, ativo, categoria
-      FROM associados_legado
-      WHERE (ramo = 'Lobinho' OR secao ILIKE '%Alcateia%' OR secao ILIKE '%Lobo%')
-        AND (categoria IS NULL OR categoria <> 'Escotista');
-    `;
+    // 1. Fetch data from Neon DB under RLS Transaction
+    const dbData = await runInSecaoTransaction(req.user.secao_nome, async (client) => {
+      const associadosLegado = (await client.query(`
+        SELECT id_associado, registro, nome, data_nascimento, secao, ramo, sexo, ativo, categoria
+        FROM associados_legado
+        WHERE (ramo = 'Lobinho' OR secao ILIKE '%Alcateia%' OR secao ILIKE '%Lobo%')
+          AND (categoria IS NULL OR categoria <> 'Escotista')
+      `)).rows;
 
-    const progressaoLegado = await sql`SELECT id_associado, milestone, data_conclusao FROM progressao_legado`;
-    const atividadesLegado = await sql`SELECT id_associado, cd_ueb, ds_atividade FROM atividades_legado`;
-    const especialidadesLegado = await sql`SELECT id_associado, cd_especialidade, ds_especialidade, nivel FROM especialidades_legado`;
+      const progressaoLegado = (await client.query(`SELECT id_associado, milestone, data_conclusao FROM progressao_legado`)).rows;
+      const atividadesLegado = (await client.query(`SELECT id_associado, cd_ueb, ds_atividade FROM atividades_legado`)).rows;
+      const especialidadesLegado = (await client.query(`SELECT id_associado, cd_especialidade, ds_especialidade, nivel FROM especialidades_legado`)).rows;
 
-    const associadosP100 = await sql`
-      SELECT id_associado, registro, nome, data_nascimento, secao, ramo, categoria
-      FROM associados_paxtu100
-      WHERE (categoria IS NULL OR categoria <> 'Escotista');
-    `;
-    const progressaoP100 = await sql`SELECT id_associado, milestone, data_conclusao FROM progressao_paxtu100`;
-    const atividadesP100 = await sql`SELECT id_associado, ds_atividade FROM atividades_paxtu100`;
+      const associadosP100 = (await client.query(`
+        SELECT id_associado, registro, nome, data_nascimento, secao, ramo, sexo, categoria
+        FROM associados_paxtu100
+        WHERE (categoria IS NULL OR categoria <> 'Escotista')
+      `)).rows;
+      const progressaoP100 = (await client.query(`SELECT id_associado, milestone, data_conclusao FROM progressao_paxtu100`)).rows;
+      const atividadesP100 = (await client.query(`SELECT id_associado, ds_atividade FROM atividades_paxtu100`)).rows;
 
-    const todosAjustes = await sql`SELECT registro, chave, valor FROM ajustes_chefia`;
+      const todosAjustes = (await client.query(`SELECT registro, chave, valor FROM ajustes_chefia`)).rows;
+
+      return {
+        associadosLegado,
+        progressaoLegado,
+        atividadesLegado,
+        especialidadesLegado,
+        associadosP100,
+        progressaoP100,
+        atividadesP100,
+        todosAjustes
+      };
+    });
+
+    const {
+      associadosLegado,
+      progressaoLegado,
+      atividadesLegado,
+      especialidadesLegado,
+      associadosP100,
+      progressaoP100,
+      atividadesP100,
+      todosAjustes
+    } = dbData;
 
     // Index DB records by id_associado or registro for fast retrieval
     const progLegMap = {};
@@ -364,7 +535,7 @@ app.get('/api/equivalencia/lobinhos', async (req, res) => {
         data_nascimento: a.data_nascimento,
         secao: a.secao,
         ramo: a.ramo,
-        sexo: null,
+        sexo: a.sexo,
         ativo: true,
         categoria: a.categoria
       };
@@ -423,8 +594,14 @@ app.get('/api/equivalencia/lobinhos', async (req, res) => {
 
       const myAjustes = ajustesMap[reg] || {};
 
-      // Determine Legacy Badge
+      // Determine Legacy and Paxtu 100 highest milestone
       const legacyHighest = getHighestMilestone(myProgLeg);
+      const p100Highest = getHighestMilestone(myProgP100);
+
+      const legacyHighestOrder = MILESTONE_ORDER[legacyHighest] || 0;
+      const p100HighestOrder = MILESTONE_ORDER[p100Highest] || 0;
+      const baselineHighestOrder = Math.max(legacyHighestOrder, p100HighestOrder);
+      const baselineHighest = baselineHighestOrder === legacyHighestOrder ? legacyHighest : p100Highest;
 
       // --- CALCULATE BLOCKS PROGRESS ---
       const blocosCalculados = BLOCOS_METADATA.map(bloco => {
@@ -494,19 +671,17 @@ app.get('/api/equivalencia/lobinhos', async (req, res) => {
       const distintivoMatematico = getBadgeByBlocksCount(totalBlocosCompletos);
 
       // Rule of Non-Regression
-      // Compare: legacy badge vs mathematical badge
-      const legOrder = MILESTONE_ORDER[legacyHighest] || 0;
+      // Compare: baseline badge vs mathematical badge
       const matOrder = MILESTONE_ORDER[distintivoMatematico] || 0;
 
       let distintivoFinal = distintivoMatematico;
       let planoAcompanhamento = false;
 
-      // If legacy had a higher badge, preserve it (except if math is Caçador and they had Caçador, which is equal)
-      // Note: we only check lobinho progression badges PATA_TENRA, SALTADOR, RASTREADOR, CACADOR
-      const legacyIsProgBadge = ['PATA_TENRA', 'SALTADOR', 'RASTREADOR', 'CACADOR'].includes(legacyHighest);
+      // If baseline had a higher badge, preserve it
+      const baselineIsProgBadge = ['PATA_TENRA', 'SALTADOR', 'RASTREADOR', 'CACADOR'].includes(baselineHighest);
       
-      if (legacyIsProgBadge && legOrder > matOrder) {
-        distintivoFinal = legacyHighest;
+      if (baselineIsProgBadge && baselineHighestOrder > matOrder) {
+        distintivoFinal = baselineHighest;
         planoAcompanhamento = true;
       }
 
@@ -589,7 +764,7 @@ app.get('/api/equivalencia/lobinhos', async (req, res) => {
 });
 
 // API endpoint to save chefia adjustments
-app.post('/api/apontamentos', async (req, res) => {
+app.post('/api/apontamentos', authenticateToken, async (req, res) => {
   const { registro, chave, valor } = req.body;
 
   if (!registro || !chave || valor === undefined) {
@@ -597,19 +772,323 @@ app.post('/api/apontamentos', async (req, res) => {
   }
 
   try {
-    // Upsert adjustment
-    await sql`
-      INSERT INTO ajustes_chefia (registro, chave, valor)
-      VALUES (${registro}, ${chave}, ${String(valor)})
-      ON CONFLICT (registro, chave) DO UPDATE SET
-        valor = EXCLUDED.valor,
-        data_apontamento = CURRENT_TIMESTAMP;
-    `;
+    await runInSecaoTransaction(req.user.secao_nome, async (client) => {
+      // Verify if the child is visible under RLS. Since RLS is enabled on the associados tables,
+      // this query will only return results if the child belongs to the chefia's active section!
+      const matchingAssociados = await client.query(`
+        SELECT registro FROM associados_paxtu100 WHERE registro = $1
+        UNION
+        SELECT registro FROM associados_legado WHERE registro = $1
+      `, [registro]);
+
+      if (matchingAssociados.rows.length === 0) {
+        throw new Error('RLS_FORBIDDEN');
+      }
+
+      // Upsert adjustment
+      await client.query(`
+        INSERT INTO ajustes_chefia (registro, chave, valor)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (registro, chave) DO UPDATE SET
+          valor = EXCLUDED.valor,
+          data_apontamento = CURRENT_TIMESTAMP
+      `, [registro, chave, String(valor)]);
+    });
 
     res.json({ success: true, message: 'Apontamento salvo com sucesso!' });
   } catch (err) {
+    if (err.message === 'RLS_FORBIDDEN') {
+      return res.status(403).json({ error: 'Acesso negado. Este associado não pertence à sua seção ativa.' });
+    }
     console.error('Error saving adjustments:', err);
     res.status(500).json({ error: 'Erro ao salvar apontamento', details: err.message });
+  }
+});
+
+// --- AUTHENTICATION & SYNC ENDPOINTS ---
+
+// Auth: Register
+app.post('/api/auth/register', async (req, res) => {
+  const { nome, email, senha, cargo, secao_id } = req.body;
+  if (!nome || !email || !senha || !cargo || !secao_id) {
+    return res.status(400).json({ error: 'Nome, e-mail, senha, cargo e seção são obrigatórios.' });
+  }
+
+  const resolvedSecaoNome = SECTION_MAP[secao_id];
+  if (!resolvedSecaoNome) {
+    return res.status(400).json({ error: 'Seção selecionada é inválida.' });
+  }
+
+  try {
+    const existing = await sql`SELECT id FROM usuarios_sistema WHERE email = ${email}`;
+    if (existing.length > 0) {
+      return res.status(400).json({ error: 'Este e-mail já está cadastrado.' });
+    }
+
+    const hash = hashPassword(senha);
+    await sql`
+      INSERT INTO usuarios_sistema (nome, email, senha_hash, cargo, secao_id, secao_nome, aprovado)
+      VALUES (${nome}, ${email}, ${hash}, ${cargo}, ${parseInt(secao_id, 10)}, ${resolvedSecaoNome}, false);
+    `;
+
+    res.json({ success: true, message: 'Usuário registrado com sucesso! Pendente de aprovação pelo administrador.' });
+  } catch (err) {
+    console.error('Registration error:', err);
+    res.status(500).json({ error: 'Erro ao registrar usuário', details: err.message });
+  }
+});
+
+// Auth: Login
+app.post('/api/auth/login', async (req, res) => {
+  const { email, senha } = req.body;
+  if (!email || !senha) {
+    return res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
+  }
+
+  try {
+    const users = await sql`SELECT id, nome, email, senha_hash, cargo, secao_id, secao_nome, aprovado FROM usuarios_sistema WHERE email = ${email}`;
+    if (users.length === 0) {
+      return res.status(400).json({ error: 'E-mail ou senha incorretos.' });
+    }
+
+    const user = users[0];
+    if (!verifyPassword(senha, user.senha_hash)) {
+      return res.status(400).json({ error: 'E-mail ou senha incorretos.' });
+    }
+
+    if (!user.aprovado) {
+      return res.status(403).json({ error: 'Cadastro pendente de aprovação do administrador.' });
+    }
+
+    const token = generateToken({ 
+      id: user.id, 
+      nome: user.nome, 
+      email: user.email,
+      cargo: user.cargo,
+      secao_id: user.secao_id,
+      secao_nome: user.secao_nome
+    });
+    
+    res.json({ 
+      success: true, 
+      token, 
+      user: { 
+        id: user.id, 
+        nome: user.nome, 
+        email: user.email, 
+        cargo: user.cargo,
+        secao_id: user.secao_id,
+        secao_nome: user.secao_nome
+      } 
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Erro ao realizar login', details: err.message });
+  }
+});
+
+// Auth: Me
+app.get('/api/auth/me', authenticateToken, async (req, res) => {
+  try {
+    const users = await sql`
+      SELECT id, nome, email, cargo, secao_id, secao_nome, aprovado, paxtu_legado_user, paxtu100_user 
+      FROM usuarios_sistema 
+      WHERE email = ${req.user.email}
+    `;
+    if (users.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado.' });
+    }
+
+    const user = users[0];
+    res.json({
+      id: user.id,
+      nome: user.nome,
+      email: user.email,
+      cargo: user.cargo,
+      secao_id: user.secao_id,
+      secao_nome: user.secao_nome,
+      aprovado: user.aprovado,
+      hasLegadoCreds: !!user.paxtu_legado_user,
+      hasP100Creds: !!user.paxtu100_user
+    });
+  } catch (err) {
+    console.error('Error in auth/me:', err);
+    res.status(500).json({ error: 'Erro interno', details: err.message });
+  }
+});
+
+// Profile: Save Credentials
+app.post('/api/profile/credentials', authenticateToken, async (req, res) => {
+  const { paxtu_legado_user, paxtu_legado_pass, paxtu100_user, paxtu100_pass } = req.body;
+
+  try {
+    const encryptedLegadoPass = encrypt(paxtu_legado_pass);
+    const encryptedP100Pass = encrypt(paxtu100_pass);
+
+    await sql`
+      UPDATE usuarios_sistema
+      SET 
+        paxtu_legado_user = COALESCE(${paxtu_legado_user || null}, paxtu_legado_user),
+        paxtu_legado_password_encrypted = COALESCE(${encryptedLegadoPass || null}, paxtu_legado_password_encrypted),
+        paxtu100_user = COALESCE(${paxtu100_user || null}, paxtu100_user),
+        paxtu100_password_encrypted = COALESCE(${encryptedP100Pass || null}, paxtu100_password_encrypted)
+      WHERE email = ${req.user.email}
+    `;
+
+    res.json({ success: true, message: 'Credenciais salvas com sucesso!' });
+  } catch (err) {
+    console.error('Error saving credentials:', err);
+    res.status(500).json({ error: 'Erro ao salvar credenciais', details: err.message });
+  }
+});
+
+// Profile: Load Credentials Status
+app.get('/api/profile/credentials', authenticateToken, async (req, res) => {
+  try {
+    const users = await sql`
+      SELECT paxtu_legado_user, paxtu100_user 
+      FROM usuarios_sistema 
+      WHERE email = ${req.user.email}
+    `;
+    if (users.length === 0) return res.status(404).json({ error: 'Usuário não encontrado' });
+    const user = users[0];
+    res.json({
+      paxtu_legado_user: user.paxtu_legado_user,
+      paxtu100_user: user.paxtu100_user
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao carregar status de credenciais', details: err.message });
+  }
+});
+
+// Sync: Status
+app.get('/api/sync/status', authenticateToken, async (req, res) => {
+  try {
+    const status = await sql`
+      SELECT status, progress, step, error, updated_at 
+      FROM sync_status 
+      WHERE email = ${req.user.email}
+    `;
+    res.json(status[0] || { status: 'idle', progress: 0, step: 'Pronto para sincronizar.', error: null });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao obter status de sincronização', details: err.message });
+  }
+});
+
+// Sync: Trigger
+app.post('/api/sync/trigger', authenticateToken, async (req, res) => {
+  try {
+    const users = await sql`
+      SELECT paxtu_legado_user, paxtu_legado_password_encrypted, paxtu100_user, paxtu100_password_encrypted
+      FROM usuarios_sistema
+      WHERE email = ${req.user.email}
+    `;
+    if (users.length === 0) return res.status(404).json({ error: 'Usuário não encontrado' });
+    
+    const user = users[0];
+    if (!user.paxtu_legado_user || !user.paxtu_legado_password_encrypted || !user.paxtu100_user || !user.paxtu100_password_encrypted) {
+      return res.status(400).json({ error: 'Configure as credenciais dos portais Paxtu no seu perfil antes de sincronizar.' });
+    }
+
+    // Decrypt credentials
+    const decryptedLegadoPass = decrypt(user.paxtu_legado_password_encrypted);
+    const decryptedP100Pass = decrypt(user.paxtu100_password_encrypted);
+
+    if (!decryptedLegadoPass || !decryptedP100Pass) {
+      return res.status(500).json({ error: 'Falha na decriptação das credenciais salvas. Reconfigure seu perfil.' });
+    }
+
+    // Update status to starting
+    await sql`
+      INSERT INTO sync_status (email, status, progress, step, error, updated_at)
+      VALUES (${req.user.email}, 'running', 0, 'Iniciando pipeline de sincronização...', NULL, NOW())
+      ON CONFLICT (email) DO UPDATE SET
+        status = EXCLUDED.status,
+        progress = EXCLUDED.progress,
+        step = EXCLUDED.step,
+        error = EXCLUDED.error,
+        updated_at = EXCLUDED.updated_at;
+    `;
+
+    // Spawn pipeline in background
+    const { spawn } = require('child_process');
+    const email = req.user.email;
+
+    const runSyncPipeline = async () => {
+      try {
+        // Step 1: Paxtu Legado
+        await new Promise((resolve, reject) => {
+          console.log(`[Sync Pipeline] Rodando extrator legado para ${email}`);
+          const child = spawn('node', [path.join(__dirname, '../../paxtu_legado/extrator_completo.js')], {
+            env: {
+              ...process.env,
+              paxtu_old_user: user.paxtu_legado_user,
+              paxtu_old_pass: decryptedLegadoPass,
+              SYNC_USER_EMAIL: email
+            }
+          });
+          child.stdout.on('data', data => console.log(`[Legado stdout] ${data}`));
+          child.stderr.on('data', data => console.error(`[Legado stderr] ${data}`));
+          child.on('close', code => {
+            if (code === 0) resolve();
+            else reject(new Error(`Extrator Legado falhou com código ${code}`));
+          });
+        });
+
+        // Step 2: Paxtu 100
+        await new Promise((resolve, reject) => {
+          console.log(`[Sync Pipeline] Rodando extrator paxtu100 para ${email}`);
+          const child = spawn('node', [path.join(__dirname, '../../paxtu100/extrator_completo_paxtu100.js')], {
+            env: {
+              ...process.env,
+              paxtu100_user: user.paxtu100_user,
+              paxtu100_pass: decryptedP100Pass,
+              SYNC_USER_EMAIL: email,
+              SYNC_SECAO_ID: String(req.user.secao_id),
+              SYNC_SECAO_NOME: req.user.secao_nome
+            }
+          });
+          child.stdout.on('data', data => console.log(`[Paxtu100 stdout] ${data}`));
+          child.stderr.on('data', data => console.error(`[Paxtu100 stderr] ${data}`));
+          child.on('close', code => {
+            if (code === 0) resolve();
+            else reject(new Error(`Extrator Paxtu 100 falhou com código ${code}`));
+          });
+        });
+
+        // Pipeline successful!
+        await sql`
+          INSERT INTO sync_status (email, status, progress, step, error, updated_at)
+          VALUES (${email}, 'completed', 100, 'Sincronização completa de ambos os sistemas finalizada!', NULL, NOW())
+          ON CONFLICT (email) DO UPDATE SET
+            status = EXCLUDED.status,
+            progress = EXCLUDED.progress,
+            step = EXCLUDED.step,
+            error = EXCLUDED.error,
+            updated_at = EXCLUDED.updated_at;
+        `;
+      } catch (err) {
+        console.error('[Sync Pipeline] Falha no processo assíncrono:', err);
+        await sql`
+          INSERT INTO sync_status (email, status, progress, step, error, updated_at)
+          VALUES (${email}, 'failed', 100, 'Sincronização falhou', ${err.message}, NOW())
+          ON CONFLICT (email) DO UPDATE SET
+            status = EXCLUDED.status,
+            progress = EXCLUDED.progress,
+            step = EXCLUDED.step,
+            error = EXCLUDED.error,
+            updated_at = EXCLUDED.updated_at;
+        `;
+      }
+    };
+
+    // Run in background without blocking request
+    setTimeout(runSyncPipeline, 0);
+
+    res.json({ success: true, message: 'Sincronização iniciada em background.' });
+  } catch (err) {
+    console.error('Error triggering sync:', err);
+    res.status(500).json({ error: 'Erro ao iniciar sincronização', details: err.message });
   }
 });
 

@@ -22,7 +22,9 @@ import {
   Info
 } from 'lucide-react';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = window.location.port === '5173' || window.location.port === '3000'
+  ? 'http://localhost:5000/api'
+  : '/api';
 
 // Fallback Mock Data in case API is unavailable or database is empty
 const MOCK_LOBINHOS_FALLBACK = [
@@ -162,6 +164,30 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('visao_geral');
   const [isUsingMocks, setIsUsingMocks] = useState(false);
   
+  // Auth State
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
+  const [userProfile, setUserProfile] = useState(null);
+  
+  // Login Form State
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginNome, setLoginNome] = useState('');
+  const [loginCargo, setLoginCargo] = useState('chefe');
+  const [loginSecaoId, setLoginSecaoId] = useState('');
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [authError, setAuthError] = useState('');
+
+  // Paxtu Credentials State (for Profile view)
+  const [paxtuLegadoUser, setPaxtuLegadoUser] = useState('');
+  const [paxtuLegadoPass, setPaxtuLegadoPass] = useState('');
+  const [paxtu100User, setPaxtu100User] = useState('');
+  const [paxtu100Pass, setPaxtu100Pass] = useState('');
+  const [profileMsg, setProfileMsg] = useState('');
+
+  // Sync State
+  const [syncStatus, setSyncStatus] = useState({ status: 'idle', progress: 0, step: 'Pronto para sincronizar.', error: null });
+  const [isSyncing, setIsSyncing] = useState(false);
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLobinho, setSelectedLobinho] = useState(null);
@@ -171,42 +197,131 @@ export default function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [hasNewAlert, setHasNewAlert] = useState(false);
+  const [chatInput, setChatInput] = useState('');
 
-  // Load data
-  const fetchData = async () => {
-    setLoading(true);
+  // Fetch Profile Info
+  const fetchProfile = async () => {
     try {
-      const response = await fetch(`${API_BASE}/equivalencia/lobinhos`);
-      if (!response.ok) throw new Error('API server unavailable');
-      const data = await response.json();
-      
-      if (data.length === 0) {
-        // Fallback if DB is empty
-        setLobinhos(MOCK_LOBINHOS_FALLBACK);
-        setIsUsingMocks(true);
-      } else {
-        setLobinhos(data);
-        setIsUsingMocks(false);
+      const response = await fetch(`${API_BASE}/auth/me`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUserProfile(data);
       }
     } catch (err) {
-      console.warn('Backend unavailable, falling back to mock data:', err.message);
-      setLobinhos(MOCK_LOBINHOS_FALLBACK);
-      setIsUsingMocks(true);
+      console.error('Error fetching user profile:', err);
+    }
+  };
+
+  // Load data from API
+  const fetchData = async (silent = false) => {
+    if (!localStorage.getItem('token')) return;
+    if (!silent) setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/equivalencia/lobinhos`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (!response.ok) throw new Error('API server returned error');
+      const data = await response.json();
+      setLobinhos(data);
+      setIsUsingMocks(false);
+
+      // Keep selected lobinho updated if modal is open
+      if (selectedLobinho) {
+        const fresh = data.find(l => l.registro === selectedLobinho.registro);
+        if (fresh) setSelectedLobinho(fresh);
+      }
+    } catch (err) {
+      console.warn('Backend error or unavailable:', err.message);
+      // If unauthorized, logout
+      if (err.message.includes('401') || err.message.includes('403')) {
+        handleLogout();
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (isAuthenticated) {
+      fetchData();
+      fetchProfile();
+      checkSyncStatus();
+    }
+  }, [isAuthenticated]);
+
+  // Check current sync status on load
+  const checkSyncStatus = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/sync/status`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSyncStatus(data);
+        if (data.status === 'running') {
+          setIsSyncing(true);
+        }
+      }
+    } catch (e) {
+      console.error('Error checking sync status:', e);
+    }
+  };
+
+  // Poll sync status when syncing
+  useEffect(() => {
+    let interval = null;
+    if (isSyncing) {
+      interval = setInterval(async () => {
+        try {
+          const res = await fetch(`${API_BASE}/sync/status`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setSyncStatus(data);
+            if (data.status === 'completed' || data.status === 'failed') {
+              setIsSyncing(false);
+              fetchData();
+            }
+          }
+        } catch (e) {
+          console.error('Error polling sync status:', e);
+        }
+      }, 2000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isSyncing]);
+
+  // Load Credentials for Profile Editing
+  useEffect(() => {
+    if (activeTab === 'perfil' && isAuthenticated) {
+      const loadCreds = async () => {
+        try {
+          const res = await fetch(`${API_BASE}/profile/credentials`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setPaxtuLegadoUser(data.paxtu_legado_user || '');
+            setPaxtu100User(data.paxtu100_user || '');
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      loadCreds();
+    }
+  }, [activeTab]);
 
   // Trigger Akela IA notifications when data is loaded
   useEffect(() => {
     if (lobinhos.length > 0) {
       const planoAcompanhamentoCount = lobinhos.filter(l => l.planoAcompanhamento).length;
       const atrasadosTropaCount = lobinhos.filter(l => l.caminhoTropa.status === 'Atrasado - Passagem Imediata').length;
-      const aptosCruzeiroCount = lobinhos.filter(l => l.cruzeiro.apto).length;
 
       let welcomeMsg = 'Melhor Possível, Escotista! 🐺 Bem-vindo ao LoboTrack: Focado no rastreamento da progressão. ';
       
@@ -235,96 +350,179 @@ export default function App() {
     }
   }, [lobinhos]);
 
+  // Handle Auth actions
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginEmail, senha: loginPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro no login');
+      
+      localStorage.setItem('token', data.token);
+      setIsAuthenticated(true);
+      setLoginEmail('');
+      setLoginPassword('');
+    } catch (err) {
+      setAuthError(err.message);
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          nome: loginNome, 
+          email: loginEmail, 
+          senha: loginPassword,
+          cargo: loginCargo,
+          secao_id: loginSecaoId
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro no cadastro');
+      
+      alert('Cadastro realizado com sucesso! Aguarde a aprovação do administrador para efetuar o login.');
+      
+      setLoginNome('');
+      setLoginEmail('');
+      setLoginPassword('');
+      setLoginCargo('chefe');
+      setLoginSecaoId('');
+      setIsRegisterMode(false);
+    } catch (err) {
+      setAuthError(err.message);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setIsAuthenticated(false);
+    setUserProfile(null);
+    setLobinhos([]);
+  };
+
+  // Save credentials
+  const handleSaveCredentials = async (e) => {
+    e.preventDefault();
+    setProfileMsg('');
+    try {
+      const res = await fetch(`${API_BASE}/profile/credentials`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          paxtu_legado_user: paxtuLegadoUser,
+          paxtu_legado_pass: paxtuLegadoPass,
+          paxtu100_user: paxtu100User,
+          paxtu100_pass: paxtu100Pass
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao salvar credenciais');
+      setProfileMsg('Credenciais atualizadas com sucesso!');
+      setPaxtuLegadoPass('');
+      setPaxtu100Pass('');
+      fetchProfile();
+    } catch (err) {
+      setProfileMsg('Erro: ' + err.message);
+    }
+  };
+
+  // Trigger sync
+  const handleTriggerSync = async () => {
+    setProfileMsg('');
+    try {
+      const res = await fetch(`${API_BASE}/sync/trigger`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao sincronizar');
+      
+      setIsSyncing(true);
+      setSyncStatus({ status: 'running', progress: 0, step: 'Iniciando sincronização...', error: null });
+    } catch (err) {
+      alert('Não foi possível iniciar a sincronização: ' + err.message);
+    }
+  };
+
   // Handle saving adjustments from modal or quick views
   const handleSaveAdjustment = async (registro, chave, valor) => {
     try {
-      if (isUsingMocks) {
-        // Local state update if using mocks
-        setLobinhos(prev => prev.map(l => {
-          if (l.registro !== registro) return l;
-          
-          const updated = { ...l };
-          
-          // Apply changes locally to mock data
-          if (chave.startsWith('bloco_')) {
-            const parts = chave.split('_');
-            const blocoId = parseInt(parts[1]);
-            const type = parts[2]; // fixas or variaveis
-            
-            updated.blocos = updated.blocos.map(b => {
-              if (b.id !== blocoId) return b;
-              
-              if (type === 'fixas') {
-                const idx = parseInt(parts[3]);
-                const newFixas = [...b.fixas];
-                newFixas[idx].completado = valor === 'true' || valor === true;
-                const fixasCompletas = newFixas.every(f => f.completado);
-                const completado = fixasCompletas && b.variaveisContagem >= b.variaveisAlvo;
-                return { ...b, fixas: newFixas, fixasCompletas, completado };
-              } else {
-                const overrideVal = parseInt(valor, 10) || 0;
-                const totalVariaveis = b.legacyCount + b.specsCount + overrideVal;
-                const completado = b.fixasCompletas && totalVariaveis >= b.variaveisAlvo;
-                return { ...b, overrideCount: overrideVal, variaveisContagem: totalVariaveis, completado };
-              }
-            });
-            
-            updated.blocosCompletos = updated.blocos.filter(b => b.completado).length;
-            const MathBadge = getBadgeByBlocksCount(updated.blocosCompletos);
-            const legOrder = MILESTONE_ORDER[updated.distintivoLegado.toUpperCase().replace('-', '_')] || 0;
-            const matOrder = MILESTONE_ORDER[MathBadge] || 0;
-            
-            if (legOrder > matOrder) {
-              updated.distintivoAtual = updated.distintivoLegado;
-              updated.planoAcompanhamento = true;
-            } else {
-              updated.distintivoAtual = getMilestoneReadable(MathBadge);
-              updated.planoAcompanhamento = false;
-            }
-          } else if (chave.startsWith('cruzeiro_')) {
-            const field = chave.split('_')[1];
-            updated.cruzeiro = { ...updated.cruzeiro, [field]: valor === 'true' || valor === true };
-            updated.cruzeiro.apto = updated.blocosCompletos === 18 && updated.cruzeiro.reflexao && updated.cruzeiro.roca && updated.cruzeiro.caminho;
-          } else if (chave.startsWith('tropa_')) {
-            const field = chave.split('_')[1];
-            const t = { ...updated.caminhoTropa };
-            if (field === 'visitas') {
-              t.visitas = parseInt(valor, 10) || 0;
-            } else {
-              t[field] = valor === 'true' || valor === true;
-            }
-            
-            let percent = 0;
-            percent += Math.min(4, t.visitas) * 10;
-            if (t.familiarizacao) percent += 30;
-            if (t.prontidao) percent += 30;
-            t.percent = percent;
-            
-            if (updated.idade >= 9.5) {
-              if (percent === 100) t.status = 'Apto para Passagem';
-              else if (updated.idade >= 10.5) t.status = 'Atrasado - Passagem Imediata';
-              else if (percent > 0) t.status = 'Em Transição';
-              else t.status = 'Não Iniciado - Atenção';
-            }
-            updated.caminhoTropa = t;
-          }
-          
-          return updated;
-        }));
-      } else {
-        // Save to backend
-        const res = await fetch(`${API_BASE}/apontamentos`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ registro, chave, valor })
-        });
-        if (!res.ok) throw new Error('Failed to save adjustment');
-        // Refresh data
-        await fetchData();
-      }
+      // Save to backend
+      const res = await fetch(`${API_BASE}/apontamentos`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ registro, chave, valor })
+      });
+      if (!res.ok) throw new Error('Failed to save adjustment');
+      // Refresh data silently
+      await fetchData(true);
     } catch (e) {
       alert('Erro ao salvar apontamento: ' + e.message);
     }
+  };
+
+  // Send message to Akela IA
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userText = chatInput.trim();
+    setChatInput('');
+
+    const newMsgUser = {
+      id: messages.length + 1,
+      sender: 'user',
+      text: userText,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    let replyText = 'Melhor Possível, Escotista! Desculpe, não compreendi muito bem. Você pode clicar nas perguntas rápidas ou perguntar sobre um lobinho específico pelo nome!';
+    const lower = userText.toLowerCase();
+
+    if (lower.includes('atenção') || lower.includes('perigo') || lower.includes('atrasado') || lower.includes('plano')) {
+      const planoAcompanhamentoCount = lobinhos.filter(l => l.planoAcompanhamento).length;
+      const atrasadosTropaCount = lobinhos.filter(l => l.caminhoTropa.status === 'Atrasado - Passagem Imediata').length;
+      if (planoAcompanhamentoCount > 0 || atrasadosTropaCount > 0) {
+        replyText = `Temos ${planoAcompanhamentoCount} lobinho(s) com alerta de plano de acompanhamento ativo e ${atrasadosTropaCount} lobinho(s) com passagem atrasada para a tropa. Verifique as abas do portal para ver os detalhes de cada um!`;
+      } else {
+        replyText = 'Todos os lobinhos estão com a progressão em dia e sem regressão ou atraso de tropa! Tudo azul na jângal!';
+      }
+    } else if (lower.includes('cruzeiro') || lower.includes('sul')) {
+      replyText = 'O Cruzeiro do Sul exige a conclusão dos 18 blocos de competências e os 3 pilares adicionais (Reflexão, Roca de Conselho e Caminho do Caçador). Você pode marcar estes pilares na aba correspondente do portal.';
+    } else if (lower.includes('olá') || lower.includes('oi') || lower.includes('tudo bem') || lower.includes('bom dia') || lower.includes('boa tarde')) {
+      replyText = 'Melhor Possível, Escotista! 🐺 Sou a Akela IA. Como posso te auxiliar no acompanhamento dos lobinhos hoje?';
+    } else {
+      // Find if it mentions any lobinho name
+      const foundLobinho = lobinhos.find(l => lower.includes(l.nome.toLowerCase()) || l.nome.toLowerCase().includes(lower));
+      if (foundLobinho) {
+        replyText = `Sobre ${foundLobinho.nome} (Reg: ${foundLobinho.registro}):\n- Distintivo Atual: ${foundLobinho.distintivoAtual}\n- Blocos Completos: ${foundLobinho.blocosCompletos}/18\n- Plano de Acompanhamento: ${foundLobinho.planoAcompanhamento ? 'Sim' : 'Não'}\n- Progresso da Tropa: ${foundLobinho.caminhoTropa.percent}% (${foundLobinho.caminhoTropa.status})`;
+      }
+    }
+
+    const newMsgAkela = {
+      id: messages.length + 2,
+      sender: 'akela',
+      text: replyText,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setMessages(prev => [...prev, newMsgUser, newMsgAkela]);
   };
 
   // KPIs
@@ -332,6 +530,125 @@ export default function App() {
   const kpiPlano = lobinhos.filter(l => l.planoAcompanhamento).length;
   const kpiAptosCruzeiro = lobinhos.filter(l => l.cruzeiro.apto).length;
   const kpiAtrasadosTropa = lobinhos.filter(l => l.caminhoTropa.status === 'Atrasado - Passagem Imediata').length;
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-600 to-indigo-500" />
+          
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20 mb-3">
+              <Compass className="w-7 h-7 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-white tracking-tight">LoboTrack</h2>
+            <p className="text-xs text-slate-400 mt-1">Portal de Acompanhamento da Alcateia</p>
+          </div>
+
+          <form onSubmit={isRegisterMode ? handleRegister : handleLogin} className="space-y-4">
+            {isRegisterMode && (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Nome do Escotista</label>
+                  <input 
+                    type="text" 
+                    value={loginNome} 
+                    onChange={(e) => setLoginNome(e.target.value)} 
+                    required
+                    placeholder="Seu nome"
+                    className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-650 focus:outline-none focus:border-blue-500 text-sm transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Cargo</label>
+                  <select 
+                    value={loginCargo} 
+                    onChange={(e) => setLoginCargo(e.target.value)} 
+                    required
+                    className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-blue-500 text-sm transition-colors"
+                  >
+                    <option value="chefe">Chefe de Seção</option>
+                    <option value="assistente">Assistente de Seção</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Seção Ativa</label>
+                  <select 
+                    value={loginSecaoId} 
+                    onChange={(e) => setLoginSecaoId(e.target.value)} 
+                    required
+                    className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-blue-500 text-sm transition-colors"
+                  >
+                    <option value="">Selecione</option>
+                    <option value="559">Alcatéia Francisco de Assis</option>
+                    <option value="558">Alcatéia Seeonee</option>
+                    <option value="11009">Alcateia Waingunga</option>
+                    <option value="3031">Clã Ibirapitanga</option>
+                    <option value="7145">Tropa Curupaiti</option>
+                    <option value="12076">Tropa Orion</option>
+                    <option value="2986">Tropa Senior Panará</option>
+                    <option value="5164">Tropa Senior Uatumã</option>
+                    <option value="2984">Tropa Tuiuti</option>
+                  </select>
+                </div>
+              </>
+            )}
+            
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">E-mail</label>
+              <input 
+                type="email" 
+                value={loginEmail} 
+                onChange={(e) => setLoginEmail(e.target.value)} 
+                required
+                placeholder="akela@exemplo.com"
+                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-650 focus:outline-none focus:border-blue-500 text-sm transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Senha</label>
+              <input 
+                type="password" 
+                value={loginPassword} 
+                onChange={(e) => setLoginPassword(e.target.value)} 
+                required
+                placeholder="••••••••"
+                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-650 focus:outline-none focus:border-blue-500 text-sm transition-colors"
+              />
+            </div>
+
+            {authError && (
+              <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 p-3 rounded-xl">
+                {authError}
+              </p>
+            )}
+
+            <button 
+              type="submit" 
+              className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-sm font-semibold rounded-xl text-white transition-colors mt-2"
+            >
+              {isRegisterMode ? 'Cadastrar' : 'Entrar'}
+            </button>
+          </form>
+
+          <div className="text-center mt-6">
+            <button 
+              onClick={() => {
+                setIsRegisterMode(!isRegisterMode);
+                setAuthError('');
+              }}
+              className="text-xs text-blue-400 hover:underline"
+            >
+              {isRegisterMode ? 'Já tem conta? Faça Login' : 'Não tem conta? Cadastre-se'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-500 selection:text-white pb-16">
@@ -350,22 +667,56 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
-            {isUsingMocks && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                Modo Demo (Dados Mocks)
+          <div className="flex items-center space-x-4">
+            {userProfile && (
+              <span className="text-xs text-slate-300 font-medium">
+                Melhor Possível, <span className="text-blue-400 font-bold">{userProfile.nome}</span>!
               </span>
             )}
+            
+            {/* Sync Progress Indicator / Trigger */}
+            <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
+              {isSyncing ? (
+                <div className="flex items-center space-x-2">
+                  <RefreshCw className="w-3.5 h-3.5 text-blue-500 animate-spin" />
+                  <span className="text-[10px] text-blue-400 font-semibold">{syncStatus.progress}%</span>
+                  <span className="text-[10px] text-slate-400 max-w-[120px] truncate" title={syncStatus.step}>{syncStatus.step}</span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleTriggerSync}
+                  className="text-xs text-slate-300 hover:text-white flex items-center space-x-1.5 font-medium transition-colors"
+                  title="Sincronizar dados do Paxtu"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Sincronizar Paxtu</span>
+                </button>
+              )}
+            </div>
+
             <button 
-              onClick={fetchData} 
-              className="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
-              title="Recarregar dados"
+              onClick={handleLogout} 
+              className="px-3 py-1.5 rounded-lg bg-red-950/40 border border-red-900/30 hover:bg-red-900/20 text-red-400 hover:text-red-300 text-xs font-semibold transition-colors"
             >
-              <RefreshCw className="w-4 h-4" />
+              Sair
             </button>
           </div>
         </div>
       </header>
+
+      {/* Sync Status Banner */}
+      {!isSyncing && syncStatus.status === 'failed' && (
+        <div className="bg-red-500/10 border-b border-red-500/20 py-2.5 px-4 text-center text-xs text-red-400 flex items-center justify-center space-x-2">
+          <AlertTriangle className="w-4 h-4" />
+          <span><strong>Falha na última sincronização:</strong> {syncStatus.error || syncStatus.step}</span>
+        </div>
+      )}
+      {!isSyncing && syncStatus.status === 'completed' && (
+        <div className="bg-emerald-500/10 border-b border-emerald-500/20 py-2.5 px-4 text-center text-xs text-emerald-400 flex items-center justify-center space-x-2">
+          <CheckCircle className="w-4 h-4" />
+          <span><strong>Sincronização realizada com sucesso!</strong> {syncStatus.step}</span>
+        </div>
+      )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-8">
         
@@ -409,10 +760,10 @@ export default function App() {
         </section>
 
         {/* TABS SELECTOR */}
-        <div className="flex border-b border-slate-800">
+        <div className="flex border-b border-slate-800 overflow-x-auto">
           <button 
             onClick={() => setActiveTab('visao_geral')}
-            className={`py-3.5 px-6 font-semibold text-sm border-b-2 transition-all flex items-center space-x-2 ${
+            className={`py-3.5 px-6 font-semibold text-sm border-b-2 transition-all flex items-center space-x-2 shrink-0 ${
               activeTab === 'visao_geral' 
                 ? 'border-blue-500 text-blue-400 bg-blue-500/5' 
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -423,7 +774,7 @@ export default function App() {
           </button>
           <button 
             onClick={() => setActiveTab('equivalencia')}
-            className={`py-3.5 px-6 font-semibold text-sm border-b-2 transition-all flex items-center space-x-2 ${
+            className={`py-3.5 px-6 font-semibold text-sm border-b-2 transition-all flex items-center space-x-2 shrink-0 ${
               activeTab === 'equivalencia' 
                 ? 'border-blue-500 text-blue-400 bg-blue-500/5' 
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -434,7 +785,7 @@ export default function App() {
           </button>
           <button 
             onClick={() => setActiveTab('cruzeiro')}
-            className={`py-3.5 px-6 font-semibold text-sm border-b-2 transition-all flex items-center space-x-2 ${
+            className={`py-3.5 px-6 font-semibold text-sm border-b-2 transition-all flex items-center space-x-2 shrink-0 ${
               activeTab === 'cruzeiro' 
                 ? 'border-blue-500 text-blue-400 bg-blue-500/5' 
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -445,7 +796,7 @@ export default function App() {
           </button>
           <button 
             onClick={() => setActiveTab('tropa')}
-            className={`py-3.5 px-6 font-semibold text-sm border-b-2 transition-all flex items-center space-x-2 ${
+            className={`py-3.5 px-6 font-semibold text-sm border-b-2 transition-all flex items-center space-x-2 shrink-0 ${
               activeTab === 'tropa' 
                 ? 'border-blue-500 text-blue-400 bg-blue-500/5' 
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -453,6 +804,17 @@ export default function App() {
           >
             <Compass className="w-4 h-4" />
             <span>Caminho da Tropa</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('perfil')}
+            className={`py-3.5 px-6 font-semibold text-sm border-b-2 transition-all flex items-center space-x-2 shrink-0 ${
+              activeTab === 'perfil' 
+                ? 'border-blue-500 text-blue-400 bg-blue-500/5' 
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Compass className="w-4 h-4 text-indigo-455" />
+            <span>Credenciais Paxtu</span>
           </button>
         </div>
 
@@ -625,16 +987,29 @@ export default function App() {
                             )}
                           </td>
                           <td className="py-4 px-6 text-right">
-                            <button
-                              onClick={() => {
-                                setSelectedLobinho(l);
-                                setIsModalOpen(true);
-                                setModalTab('fixas');
-                              }}
-                              className="px-3.5 py-1.5 rounded-lg bg-slate-850 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors"
-                            >
-                              Apontar
-                            </button>
+                            {l.planoAcompanhamento ? (
+                              <button
+                                onClick={() => {
+                                  setSelectedLobinho(l);
+                                  setIsModalOpen(true);
+                                  setModalTab('fixas');
+                                }}
+                                className="px-3.5 py-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/20 border border-red-900/30 text-xs font-semibold text-red-400 transition-colors animate-pulse"
+                              >
+                                Apontar
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setSelectedLobinho(l);
+                                  setIsModalOpen(true);
+                                  setModalTab('fixas');
+                                }}
+                                className="px-3.5 py-1.5 rounded-lg bg-slate-850 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-400 transition-colors"
+                              >
+                                Ajustar
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -843,6 +1218,97 @@ export default function App() {
                     <p className="text-sm">Nenhum lobinho na idade de transição (idade &gt;= 9.5 anos).</p>
                   </div>
                 )}
+              </div>
+            )}
+            
+            {/* TAB CONTENT: CREDENCIAIS PAXTU */}
+            {activeTab === 'perfil' && (
+              <div className="max-w-2xl mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-8 space-y-6">
+                <div className="border-b border-slate-800 pb-4">
+                  <h3 className="text-lg font-bold text-white">Configurações de Acesso Paxtu</h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Insira suas credenciais do Paxtu Legado e Paxtu 100 para viabilizar as sincronizações sob demanda do portal. As senhas serão armazenadas de forma cifrada no banco de dados.
+                  </p>
+                </div>
+
+                <form onSubmit={handleSaveCredentials} className="space-y-6">
+                  {/* Paxtu Legado */}
+                  <div className="space-y-3.5">
+                    <h4 className="text-sm font-bold text-blue-400 flex items-center space-x-2">
+                      <span>Paxtu Legado</span>
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1.5">Usuário / Registro</label>
+                        <input
+                          type="text"
+                          value={paxtuLegadoUser}
+                          onChange={(e) => setPaxtuLegadoUser(e.target.value)}
+                          placeholder="Ex: 123456"
+                          className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-700 focus:outline-none focus:border-blue-500 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1.5">Senha</label>
+                        <input
+                          type="password"
+                          value={paxtuLegadoPass}
+                          onChange={(e) => setPaxtuLegadoPass(e.target.value)}
+                          placeholder="Sua senha do Paxtu Antigo"
+                          className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-700 focus:outline-none focus:border-blue-500 text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Paxtu 100 */}
+                  <div className="space-y-3.5 pt-4 border-t border-slate-800/60">
+                    <h4 className="text-sm font-bold text-indigo-400">
+                      Paxtu 100 (Novo)
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1.5">Usuário (E-mail ou Registro)</label>
+                        <input
+                          type="text"
+                          value={paxtu100User}
+                          onChange={(e) => setPaxtu100User(e.target.value)}
+                          placeholder="Ex: seuemail@provedor.com"
+                          className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-700 focus:outline-none focus:border-blue-500 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1.5">Senha</label>
+                        <input
+                          type="password"
+                          value={paxtu100Pass}
+                          onChange={(e) => setPaxtu100Pass(e.target.value)}
+                          placeholder="Sua senha do Paxtu 100"
+                          className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-700 focus:outline-none focus:border-blue-500 text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {profileMsg && (
+                    <div className={`p-3.5 rounded-xl text-xs border ${
+                      profileMsg.startsWith('Erro') 
+                        ? 'bg-red-500/10 text-red-400 border-red-500/20' 
+                        : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                    }`}>
+                      {profileMsg}
+                    </div>
+                  )}
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-xs font-bold text-white transition-all shadow-md shadow-blue-500/10"
+                    >
+                      Salvar Credenciais
+                    </button>
+                  </div>
+                </form>
               </div>
             )}
 
@@ -1078,6 +1544,23 @@ export default function App() {
                 Como funciona o Cruzeiro?
               </button>
             </div>
+
+            {/* Input Form */}
+            <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-800 bg-slate-900 flex items-center space-x-2">
+              <input 
+                type="text" 
+                value={chatInput} 
+                onChange={(e) => setChatInput(e.target.value)} 
+                placeholder="Digite sua dúvida para a Akela..." 
+                className="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 text-xs"
+              />
+              <button 
+                type="submit" 
+                className="p-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white transition-colors"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            </form>
 
           </div>
         )}

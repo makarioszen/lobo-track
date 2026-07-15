@@ -16,8 +16,30 @@ if (!process.env.DATABASE_URL) {
 
 const sql = neon(process.env.DATABASE_URL);
 
+async function updateProgress(status, progress, step, error = null) {
+  if (process.env.SYNC_USER_EMAIL) {
+    try {
+      await sql`
+        INSERT INTO sync_status (email, status, progress, step, error, updated_at)
+        VALUES (${process.env.SYNC_USER_EMAIL}, ${status}, ${progress}, ${step}, ${error}, NOW())
+        ON CONFLICT (email) DO UPDATE SET
+          status = EXCLUDED.status,
+          progress = EXCLUDED.progress,
+          step = EXCLUDED.step,
+          error = EXCLUDED.error,
+          updated_at = EXCLUDED.updated_at;
+      `;
+    } catch (e) {
+      console.error('Erro ao atualizar progresso no banco:', e.message);
+    }
+  }
+}
+
+
 async function getSessionCookies() {
   console.log('[1/5] Iniciando o Puppeteer para obter os cookies de sessão...');
+  await updateProgress('running', 5, 'Iniciando Puppeteer...');
+  
   const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
@@ -33,6 +55,7 @@ async function getSessionCookies() {
   const pass = process.env.paxtu_old_pass;
 
   console.log('[1/5] Preenchendo login...');
+  await updateProgress('running', 10, 'Autenticando no Paxtu Legado...');
   await page.waitForSelector('input[name="dsLogin"]', { timeout: 15000 });
   await page.type('input[name="dsLogin"]', user, { delay: 50 });
   await page.type('input[name="dsSenha"]', pass, { delay: 50 });
@@ -52,6 +75,7 @@ async function getSessionCookies() {
 
   await browser.close();
   console.log('[1/5] Puppeteer finalizado e cookies capturados.');
+  await updateProgress('running', 20, 'Sessão autenticada com sucesso.');
   return cookieString;
 }
 
@@ -206,6 +230,7 @@ async function runExtractor() {
     };
 
     console.log('\n[2/5] Buscando lista de associados...');
+    await updateProgress('running', 25, 'Buscando lista de associados...');
     const listUrl = 'https://paxtu.escoteiros.org.br/paxtu/br.com.wallis.sgg.EntryPointPrincipal/rpc/associadoservice';
     const listPayload = '7|0|9|https://paxtu.escoteiros.org.br/paxtu/br.com.wallis.sgg.Sgg/|FF5CB9852330EB11461971E09407D0D9|br.com.wallis.sgg.client.rpc.AssociadoService|pesquisaAssociadosMinMax|br.com.wallis.sgg.shared.beans.associado.PesquisaAssociadosMinMaxParameter/1272958102||S|java.lang.Boolean/476441737|java.lang.Integer/3438268394|1|2|3|4|1|5|5|0|6|6|6|-1|0|-1|6|-1|6|6|6|6|0|-1|0|6|0|0|0|0|0|0|0|7|6|8|0|6|20|0|6|6|-1|9|0|';
 
@@ -214,11 +239,13 @@ async function runExtractor() {
 
     if (!associatesList || !associatesList.data || associatesList.data.length === 0) {
       console.log('Nenhum associado encontrado.');
+      await updateProgress('completed', 100, 'Nenhum associado encontrado.');
       return;
     }
 
     const totalAssociados = associatesList.data.length;
     console.log(`[2/5] Total de associados encontrados: ${totalAssociados}`);
+    await updateProgress('running', 30, `Encontrados ${totalAssociados} associados. Iniciando extração...`);
 
     console.log('\n[3/5] Extraindo detalhes, especialidades e progressões para cada associado...');
     
@@ -231,6 +258,9 @@ async function runExtractor() {
       const id = associado.cd_associado;
       const nome = associado.nm_associado;
       console.log(`   [${idx}/${totalAssociados}] Processando: ${nome} (ID: ${id})`);
+      
+      const currentProgress = 30 + Math.floor((idx / totalAssociados) * 60);
+      await updateProgress('running', currentProgress, `Processando: ${nome} (${idx}/${totalAssociados})`);
 
       try {
         // 1. Obter Detalhes do Associado (Progressões básicas)
@@ -311,6 +341,7 @@ async function runExtractor() {
     });
 
     console.log('\n[4/5] Gerando arquivo Excel (.xlsx) local de backup...');
+    await updateProgress('running', 95, 'Gerando relatório Excel de backup...');
     
     const workbook = new ExcelJS.Workbook();
     
@@ -418,9 +449,11 @@ async function runExtractor() {
     console.log(`   Dados salvos no Neon DB com sucesso.`);
     console.log(`   Planilha de backup salva em: ${outputPath}`);
     console.log('================================================');
+    await updateProgress('completed', 100, 'Sincronização do Paxtu Legado concluída com sucesso!');
 
   } catch (err) {
     console.error('Erro crítico no processo do extrator:', err.message);
+    await updateProgress('failed', 100, 'Erro crítico no processo do extrator legado', err.message);
   }
 }
 

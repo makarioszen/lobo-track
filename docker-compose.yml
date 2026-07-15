@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: portal/backend/Dockerfile
+    container_name: lobotrack-backend
+    expose:
+      - "5000"
+    env_file:
+      - .env
+    restart: always
+
+  frontend:
+    build:
+      context: ./portal/frontend
+      dockerfile: Dockerfile
+    container_name: lobotrack-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: always
