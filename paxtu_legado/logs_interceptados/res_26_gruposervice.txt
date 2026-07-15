@@ -1,1 +1,0 @@
-//OK[1,["{\"dtValidade\":\"2005\",\"flProvisorio\":\"false\",\"imFoto\":\"false\",\"pkUsuario\":\"73070\",\"nrRegistro\":\"371723\",\"cdCidade\":\"5343\",\"nrGrupo\":\"46\",\"cdRegiao\":\"SP\",\"flResponsavel\":\"\",\"flAtivo\":\"N\",\"nmUsuario\":\"MarcoMartins\",\"cdCategoria\":\"\",\"modulo\":\"SIGUE\",\"dsCidade\":\"SÃO PAULO\"}"],0,7]

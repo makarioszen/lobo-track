@@ -1,1 +1,0 @@
-//OK[1,["{ \"totalCount\" : 5, \"data\":[{\"cd_ramo\":\"0\",\"ds_ramo\":\"Não se aplica\"},{\"cd_ramo\":\"1\",\"ds_ramo\":\"Escoteiro\"},{\"cd_ramo\":\"2\",\"ds_ramo\":\"Lobinho\"},{\"cd_ramo\":\"3\",\"ds_ramo\":\"Sênior\"},{\"cd_ramo\":\"4\",\"ds_ramo\":\"Pioneiro\"}]}"],0,7]

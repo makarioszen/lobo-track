@@ -1,1 +1,0 @@
-//OK[17,3,6,3,16,3,4,3,2,2,15,3,6,3,14,3,4,3,2,2,13,3,6,3,12,3,4,3,2,2,11,3,6,3,10,3,4,3,2,2,9,3,6,3,8,3,4,3,2,2,7,3,6,3,5,3,4,3,2,2,6,1,["java.util.ArrayList/4159755760","java.util.HashMap/1797211028","java.lang.String/2004016611","cdRacaCor","1","dsRacaCor","Amarela","2","Branca","3","Indígena","4","Parda","5","Preta","6","Não desejo informar"],0,7]

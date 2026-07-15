@@ -1,1 +1,0 @@
-//OK[1,["{ \"totalCount\" : 1, \"data\":[{\"cd_secao\":\"11009\",\"dt_criacao\":\"15/07/2023\",\"nm_secao\":\"Alcateia Waingunga\",\"fl_ativa\":\"S\",\"id\":\"0\",\"ds_tipo_secao\":\"Lobinho\"}]}"],0,7]
