@@ -18,7 +18,7 @@ services:
       dockerfile: Dockerfile
     container_name: lobotrack-frontend
     ports:
-      - "80:80"
+      - "3000:3000"
     depends_on:
       - backend
     restart: always

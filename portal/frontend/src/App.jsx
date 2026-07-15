@@ -22,7 +22,7 @@ import {
   Info
 } from 'lucide-react';
 
-const API_BASE = window.location.port === '5173' || window.location.port === '3000'
+const API_BASE = import.meta.env.DEV
   ? 'http://localhost:5000/api'
   : '/api';
 
