@@ -1,0 +1,12 @@
+{
+  "id": 15,
+  "timestamp": "2026-07-15T02:20:44.379Z",
+  "url": "https://paxtu100.escoteiros.org.br/atualizacoes/ultima",
+  "method": "GET",
+  "headers": {
+    "referer": "https://paxtu100.escoteiros.org.br/associado/lista",
+    "accept-language": "pt-BR,pt;q=0.9",
+    "accept": "application/json",
+    "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36"
+  }
+}

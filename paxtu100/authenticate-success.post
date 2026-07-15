@@ -1,0 +1,108 @@
+Request URL
+https://login.escoteiros.org.br/realms/paxtu/login-actions/authenticate?session_code=2rtEbH4n25T4Ood-Rs3vC_nYZJjrrjxiysUJbFnej0g&execution=cbcf1372-7097-4602-be02-4ab05f676c62&client_id=azimute&tab_id=9gWO8TZMJ6Y&client_data=eyJydSI6Imh0dHBzOi8vcGF4dHUxMDAuZXNjb3RlaXJvcy5vcmcuYnIvYXV0aC9rZXljbG9hay9jYWxsYmFjayIsInJ0IjoiY29kZSIsInN0Ijoib3I0TVFLZVQ5V1h1VU1XMXRRUTlFWXFBV2w0ajJrOTQ4WXFua0JoNyJ9
+Request Method
+POST
+Status Code
+302 Found
+Remote Address
+[2606:4700:3033::ac43:ae77]:443
+Referrer Policy
+no-referrer
+alt-svc
+h3=":443"; ma=86400
+cache-control
+no-store, must-revalidate, max-age=0
+cf-cache-status
+DYNAMIC
+cf-ray
+9d21d83cace05efb-GRU
+content-length
+0
+content-security-policy
+frame-src 'self'; frame-ancestors 'self'; object-src 'none';
+date
+Sun, 22 Feb 2026 22:15:53 GMT
+location
+https://paxtu100.escoteiros.org.br/auth/keycloak/callback?state=or4MQKeT9WXuUMW1tQQ9EYqAWl4j2k948YqnkBh7&session_state=bd5b6382-0810-4c63-9769-61fffa71efc2&iss=https%3A%2F%2Flogin.escoteiros.org.br%2Frealms%2Fpaxtu&code=b438e5ea-8ca4-41ed-bec3-0a9eb76bd732.bd5b6382-0810-4c63-9769-61fffa71efc2.59884413-ad25-491d-a882-66fc7f36cb4b
+nel
+{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+priority
+u=0,i
+referrer-policy
+no-referrer
+report-to
+{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=ZcFaXztbmgOpFTh0jIiclGDt0tMYbK%2Fj0CTyToeLNAs%2B6anoszHC9rweZghHuLIxQ8PoaqIMcP2xoEWyR6yprfVyAb1VYvZlpf4WeDINMHcG5P3O99wFKEYve2KpQtrU%2FXUv"}]}
+server
+cloudflare
+server-timing
+cfCacheStatus;desc="DYNAMIC"
+server-timing
+cfEdge;dur=54,cfOrigin;dur=416
+server-timing
+cfExtPri
+set-cookie
+KC_RESTART=;Version=1;Path=/realms/paxtu/;Max-Age=0
+set-cookie
+KEYCLOAK_IDENTITY=eyJhbGciOiJIUzUxMiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJjYWJhNzNkOS00OWRkLTRiM2EtOWIwYy0zMWZkMzUwMTI3OGIifQ.eyJleHAiOjE3NzE4MzQ1NTMsImlhdCI6MTc3MTc5ODU1MywianRpIjoiNWNlNzZmMzAtNmM2NS00MDU5LWFmYjAtOTk4MTI3ZDdlMzE1IiwiaXNzIjoiaHR0cHM6Ly9sb2dpbi5lc2NvdGVpcm9zLm9yZy5ici9yZWFsbXMvcGF4dHUiLCJzdWIiOiJjOGU1NDk3Yy1iMDZhLTQzOTItYWNjOS1hNWMwODRjMjcwYWIiLCJ0eXAiOiJTZXJpYWxpemVkLUlEIiwic2lkIjoiYmQ1YjYzODItMDgxMC00YzYzLTk3NjktNjFmZmZhNzFlZmMyIiwic3RhdGVfY2hlY2tlciI6IkJjdU01TE1aSG14S1FVOTMzVTA5WDRfUzBRS3VDZjlubU9KRkRZVjJqR2cifQ.kElz2dd0nP8VE9vyw8Q1EJXTkziV88qK0fkCapYDHmTGGNow5FYR4yHAzWPje0I97LRfP8DNT0xUOfZ7armZgg;Version=1;Path=/realms/paxtu/;Secure;HttpOnly;SameSite=None
+set-cookie
+KEYCLOAK_IDENTITY_LEGACY=eyJhbGciOiJIUzUxMiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJjYWJhNzNkOS00OWRkLTRiM2EtOWIwYy0zMWZkMzUwMTI3OGIifQ.eyJleHAiOjE3NzE4MzQ1NTMsImlhdCI6MTc3MTc5ODU1MywianRpIjoiNWNlNzZmMzAtNmM2NS00MDU5LWFmYjAtOTk4MTI3ZDdlMzE1IiwiaXNzIjoiaHR0cHM6Ly9sb2dpbi5lc2NvdGVpcm9zLm9yZy5ici9yZWFsbXMvcGF4dHUiLCJzdWIiOiJjOGU1NDk3Yy1iMDZhLTQzOTItYWNjOS1hNWMwODRjMjcwYWIiLCJ0eXAiOiJTZXJpYWxpemVkLUlEIiwic2lkIjoiYmQ1YjYzODItMDgxMC00YzYzLTk3NjktNjFmZmZhNzFlZmMyIiwic3RhdGVfY2hlY2tlciI6IkJjdU01TE1aSG14S1FVOTMzVTA5WDRfUzBRS3VDZjlubU9KRkRZVjJqR2cifQ.kElz2dd0nP8VE9vyw8Q1EJXTkziV88qK0fkCapYDHmTGGNow5FYR4yHAzWPje0I97LRfP8DNT0xUOfZ7armZgg;Version=1;Path=/realms/paxtu/;Secure;HttpOnly
+set-cookie
+KEYCLOAK_SESSION="paxtu/c8e5497c-b06a-4392-acc9-a5c084c270ab/bd5b6382-0810-4c63-9769-61fffa71efc2";Version=1;Path=/realms/paxtu/;Max-Age=36000;Secure;SameSite=None
+set-cookie
+KEYCLOAK_SESSION_LEGACY="paxtu/c8e5497c-b06a-4392-acc9-a5c084c270ab/bd5b6382-0810-4c63-9769-61fffa71efc2";Version=1;Path=/realms/paxtu/;Max-Age=36000;Secure
+strict-transport-security
+max-age=31536000; includeSubDomains
+x-content-type-options
+nosniff
+x-frame-options
+SAMEORIGIN
+x-robots-tag
+none
+x-xss-protection
+1; mode=block
+:authority
+login.escoteiros.org.br
+:method
+POST
+:path
+/realms/paxtu/login-actions/authenticate?session_code=2rtEbH4n25T4Ood-Rs3vC_nYZJjrrjxiysUJbFnej0g&execution=cbcf1372-7097-4602-be02-4ab05f676c62&client_id=azimute&tab_id=9gWO8TZMJ6Y&client_data=eyJydSI6Imh0dHBzOi8vcGF4dHUxMDAuZXNjb3RlaXJvcy5vcmcuYnIvYXV0aC9rZXljbG9hay9jYWxsYmFjayIsInJ0IjoiY29kZSIsInN0Ijoib3I0TVFLZVQ5V1h1VU1XMXRRUTlFWXFBV2w0ajJrOTQ4WXFua0JoNyJ9
+:scheme
+https
+accept
+text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+accept-encoding
+gzip, deflate, br, zstd
+accept-language
+pt-PT,pt;q=0.9,en-US;q=0.8,en;q=0.7
+cache-control
+max-age=0
+content-length
+57
+content-type
+application/x-www-form-urlencoded
+cookie
+AUTH_SESSION_ID=bd5b6382-0810-4c63-9769-61fffa71efc2.ip-10-0-10-217-32161; AUTH_SESSION_ID_LEGACY=bd5b6382-0810-4c63-9769-61fffa71efc2.ip-10-0-10-217-32161; KC_RESTART=eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..S1I8AoafAs10qqeTAEbTUA.JpIvC1HckKXi0CAiw5FCRu3PlvNQR5Q-NoD_4L3Ggs83iZIcjU9hcYswuL9d9diPueZSEQUW9U_-5cHmsIaOhCTrRCxVed0gABPV71jewFgdMqBoSkKbVPGd8uiLRPZML5yPpjn2Vam8DHKjViuIpwr7lqh6TpFClspFkPPxKQ-CO3cdZz2s6rT9ni0cb-P_zpj6BH1KbuYlexJyyc07tOd882Hn13BfGKZvrRYtpHclc62tTU4C4N1IS7JrtSOyjjSO6At5PSLWFZuZrveTxVLx6PkfgzbP-L4w47Ha8I_Hy7aWPAQCnt8HSZF_v1jRQP8sHPTK-lwwdiAlNHIxsgX6rePeD7Hd8kflHd31NGj09ng0V-mVz9yw2fDTGDRcoum9OxeukShfsdzeNGSJY00XxTcUxGZzBa27622pl_5l2PEAWx9Sqwt-UB_w9ykdXh0tJQY4pRm2qEcqeqC_Xzgaq2HdtM1qIN2F9ovnC95GISM_7hVRe9XWRhwoxkW2fgcLmcy3fnOrae2jjLhU7AxWHpmuGaCFhYc6-OHdRhMsPjY1CFvhhlDk21lg0RIONZbC3hQFgs9yOSXnZyP7NDqgfdIunFXdX6-889KZbuDYDSBYRSxcLWMTtmb1ToE3GjtApc5rs4-f5EF0E3BmaTZ-WiTTvPPfECKnQNOUCfmtEH5oy1Yl5mnIenuDnwKfr-Ia5saeGyrLcVPz2VvwCZnGBj024O9Ghab60TdzYvVbn22FlWfiYlp4NgBIVxSL-REJA5Bwqa1OosSnIz6PdEPqR5xPHSqNKwKUI6nl51ptNkRZ0_0_wJxXz1GSjBrrLVh1ReuXvmk-MnaOu6pennTJ96IYlDHu_qj-JK9pAvL-EafyiWSXQ41cgF1Q2YA4.FzpT-eC8GWqZj27ARG4nDg; _clck=1xdty3t%5E2%5Eg3s%5E0%5E2244; _clsk=8ydq5%5E1771798281962%5E4%5E1%5Ee.clarity.ms%2Fcollect; cf_clearance=0yqAxCu3mn_FAP..C3Y0x0nP1puGCR2uhz.06X7gZvA-1771798513-1.2.1.1-F3JJLWk.tGCzcaYvUpEvBDWzPnp9xSi3zNvna7SpsCswCxMlrD1r_ICu8t5rFP.EWl7c7.g.su9X4LwcWIB52IB852B0wYInZ110Hn7TOz60oRQZhY6HSwPfYCZNPmi41XbUuJR1c62yg8KCEeKB2hOSF8V9G_6.HDGJ_p_sMGzOO5BFn5g8tpUGDE7HKqONf_ulkCG_1LbBvn5l5PUvzGV348Al6mlA_mCPzJSqRZM
+dnt
+1
+origin
+null
+priority
+u=0, i
+sec-ch-ua
+"Not:A-Brand";v="99", "Google Chrome";v="145", "Chromium";v="145"
+sec-ch-ua-mobile
+?0
+sec-ch-ua-platform
+"Linux"
+sec-fetch-dest
+document
+sec-fetch-mode
+navigate
+sec-fetch-site
+same-origin
+sec-fetch-user
+?1
+upgrade-insecure-requests
+1
+user-agent
+Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36

@@ -1,0 +1,13 @@
+{
+  "id": 9,
+  "timestamp": "2026-07-15T02:20:32.614Z",
+  "url": "https://paxtu100.escoteiros.org.br/auth/keycloak/callback?state=yQZcRv9srGl7XoNrYYF1UydiRzEg7t3BGpH9I4kp&session_state=c8185dd8-b29c-420f-8408-08603be04560&iss=https%3A%2F%2Flogin.escoteiros.org.br%2Frealms%2Fpaxtu&code=d36b515e-0c86-4f02-937b-de995e67e9ee.c8185dd8-b29c-420f-8408-08603be04560.59884413-ad25-491d-a882-66fc7f36cb4b",
+  "method": "GET",
+  "headers": {
+    "accept-language": "pt-BR,pt;q=0.9",
+    "content-type": "application/x-www-form-urlencoded",
+    "origin": "null",
+    "upgrade-insecure-requests": "1",
+    "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36"
+  }
+}

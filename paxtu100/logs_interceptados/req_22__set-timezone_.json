@@ -1,0 +1,27 @@
+{
+  "id": 22,
+  "timestamp": "2026-07-15T02:20:53.903Z",
+  "url": "https://paxtu100.escoteiros.org.br/set-timezone",
+  "method": "POST",
+  "headers": {
+    "x-csrf-token": "GgZY52Ro808WTPmqAgo5uU46eOYMFPdCByBx9Feg",
+    "referer": "https://paxtu100.escoteiros.org.br/associado/perfil",
+    "accept-language": "pt-BR,pt;q=0.9",
+    "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+    "content-type": "application/json",
+    ":authority": "paxtu100.escoteiros.org.br",
+    ":method": "POST",
+    ":path": "/set-timezone",
+    ":scheme": "https",
+    "accept": "*/*",
+    "accept-encoding": "gzip, deflate, br, zstd",
+    "content-length": "32",
+    "cookie": "cf_clearance=cmF0R27CQzj8.SQ.coXkwiPOwzSfwntLymedCPfnO2w-1784082031-1.2.1.1-pWvHKFM6Q_Ky3Dxr5HZTqDJlvuPI14qDKnRydLMwmO9WKv8W57JBn0Nn3S720kP6Veg8CdCUxa.747RHzNjczdwFS4lJKEhKNTRvZwP5rvc8FmUdPg4ZSbAMDxNT06rAVVIyg2WsGzd1O0U7IDL7i1QZH6docCpXUbvXEYGSUlVDTYiN74dY5TcUGmcJkV.smIzbzV.70kQcWni_OUzuOo1N5JuuxAVdfmE9odNbYfPwFMigZVWYB1Ah_xV.lvH3vGnMv3g..5jhfTNY8Ez7nHU_kEED_Bcf5R5p.NiiJUvd8stzZMphKv3k1SKzRzBH0SwPzfklT6i.51fPSe2ZVg; _clck=7tp1e6%5E2%5Eg7r%5E0%5E2387; _clsk=1n8ekfu%5E1784082035726%5E1%5E1%5Ez.clarity.ms%2Fcollect; XSRF-TOKEN=eyJpdiI6IkJpZ2ZTUi9YTkRxZ1ZlL3ZEZDZRRFE9PSIsInZhbHVlIjoid1ZTL3lDcEVIR1ZMSzczM0VLNmZUbGRhcjhXNjZhQnRtd2tGKzEwT0hNQ2NlcUNLZ05uM25ReFRGOVpIcjZPK3N3THBhaXlZRFVNSWxLSnBTNTVyY3ZjSWFCWm5vUU5ycDFQSVZnckxlclVkRU5SbDlteXRTY3Y3azNybDJNSEEiLCJtYWMiOiJiNjgwOTU5YmVmNDczODA3YjE2ODg3M2U4ZThkYTVmZTRlNmM1YWNiZDcwODMxNjNmNmI2Mjg1MTJlZWFmNTIwIiwidGFnIjoiIn0%3D; paxtu100_session=eyJpdiI6IllBTk5jam9VTTRyQlBZWjI0bTlmOVE9PSIsInZhbHVlIjoiRDk2VmM3anNtU0tWdGxsTDdaZlNmVFpFcVZnWlB4a0FNZ1VuR3ZlTmUvejk2bGs4MkdlNDhGQll3dTE0VU9yNHdLN3NjbXBPS3doeWRVU0QzdEZka1JWdEpxMS9McmJmMWVXWDc5b2RHQXpkVi9pR1kzVm9ubnlGcVNkeE1yZWIiLCJtYWMiOiJlMzE0NDhmODIyMTdmM2I4MzRjM2U5NmVjZDkwZThhZjExNGI2ZWQ5ODczY2Q4N2FlMTMxMzgxYjQ2MWRiYzM1IiwidGFnIjoiIn0%3D",
+    "origin": "https://paxtu100.escoteiros.org.br",
+    "priority": "u=1, i",
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "same-origin"
+  },
+  "postData": "{\"timezone\":\"America/Sao_Paulo\"}"
+}

@@ -1,0 +1,1 @@
+//OK[1,["{ \"totalCount\" : 4, \"data\":[{\"dsNivel\":\"Não se aplica\",\"cdNivel\":\"0\"},{\"dsNivel\":\"Local\",\"cdNivel\":\"1\"},{\"dsNivel\":\"Nacional\",\"cdNivel\":\"2\"},{\"dsNivel\":\"Regional\",\"cdNivel\":\"3\"}]}"],0,7]

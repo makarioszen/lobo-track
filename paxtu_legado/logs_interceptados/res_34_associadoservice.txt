@@ -1,0 +1,1 @@
+//OK[0.9259259104728699,3,2,1,["br.com.wallis.wlibshared.shared.beans.progressbar.ProgressBarStatusBean/1445285673","Consultando informações sobre os associados","java.lang.Float/1718559123"],0,7]

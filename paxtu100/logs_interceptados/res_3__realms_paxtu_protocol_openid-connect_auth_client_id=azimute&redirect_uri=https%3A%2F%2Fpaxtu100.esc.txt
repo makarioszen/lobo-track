@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html class="login-pf" lang="pt-BR">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="robots" content="noindex, nofollow">
+
+            <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>Entrar em paxtu</title>
+    <link rel="icon" href="/resources/rwlz9/login/escoteiros_tema/img/favicon.ico" />
+            <link href="/resources/rwlz9/common/keycloak/node_modules/@patternfly/patternfly/patternfly.min.css" rel="stylesheet" />
+            <link href="/resources/rwlz9/common/keycloak/node_modules/patternfly/dist/css/patternfly.min.css" rel="stylesheet" />
+            <link href="/resources/rwlz9/common/keycloak/node_modules/patternfly/dist/css/patternfly-additions.min.css" rel="stylesheet" />
+            <link href="/resources/rwlz9/common/keycloak/lib/pficon/pficon.css" rel="stylesheet" />
+            <link href="/resources/rwlz9/login/escoteiros_tema/css/login.css" rel="stylesheet" />
+    <script type="importmap">
+        {
+            "imports": {
+                "rfc4648": "/resources/rwlz9/common/keycloak/node_modules/rfc4648/lib/rfc4648.js"
+            }
+        }
+    </script>
+    <script src="/resources/rwlz9/login/escoteiros_tema/js/menu-button-links.js" type="ef90d34b614fa9a53184e21e-module"></script>
+    <script type="ef90d34b614fa9a53184e21e-module">
+        import { checkCookiesAndSetTimer } from "/resources/rwlz9/login/escoteiros_tema/js/authChecker.js";
+
+        checkCookiesAndSetTimer(
+          "/realms/paxtu/login-actions/restart?client_id=azimute&tab_id=8o9rgM1GUEg&client_data=eyJydSI6Imh0dHBzOi8vcGF4dHUxMDAuZXNjb3RlaXJvcy5vcmcuYnIvYXV0aC9rZXljbG9hay9jYWxsYmFjayIsInJ0IjoiY29kZSIsInN0IjoieVFaY1J2OXNyR2w3WG9OcllZRjFVeWRpUnpFZzd0M0JHcEg5STRrcCJ9&skip_logout=true"
+        );
+    </script>
+</head>
+
+<body class="">
+<div class="login-pf-page">
+    <div id="kc-header" class="login-pf-page-header">
+        <div id="kc-header-wrapper"
+             class="">paxtu</div>
+    </div>
+    <div class="card-pf">
+        <header class="login-pf-header">
+                <h1 id="kc-page-title">        Entrar na sua conta
+
+</h1>
+      </header>
+      <div id="kc-content">
+        <div id="kc-content-wrapper">
+
+
+        <div id="kc-form">
+          <div id="kc-form-wrapper">
+                <form id="kc-form-login" onsubmit="if (!window.__cfRLUnblockHandlers) return false; login.disabled = true; return true;" action="https://login.escoteiros.org.br/realms/paxtu/login-actions/authenticate?session_code=WP8NqFGOhslwXPEl1wPxWavbaXMPLPVbbeilYC3fmiE&amp;execution=cbcf1372-7097-4602-be02-4ab05f676c62&amp;client_id=azimute&amp;tab_id=8o9rgM1GUEg&amp;client_data=eyJydSI6Imh0dHBzOi8vcGF4dHUxMDAuZXNjb3RlaXJvcy5vcmcuYnIvYXV0aC9rZXljbG9hay9jYWxsYmFjayIsInJ0IjoiY29kZSIsInN0IjoieVFaY1J2OXNyR2w3WG9OcllZRjFVeWRpUnpFZzd0M0JHcEg5STRrcCJ9" method="post" data-cf-modified-ef90d34b614fa9a53184e21e-="">
+                        <div class="form-group">
+                            <label for="username" class="pf-c-form__label pf-c-form__label-text">numero do registro</label>
+
+                            <input tabindex="2" id="username" class="pf-c-form-control" name="username" value=""  type="text" autofocus autocomplete="username"
+                                   aria-invalid=""
+                                   dir="ltr"
+                            />
+
+
+                        </div>
+
+                    <div class="form-group">
+                        <label for="password" class="pf-c-form__label pf-c-form__label-text">Senha ( pelo menos 8 caracteres,1 letra maiúscula, 1 caractere especial, 1 número, 1 letra minúscula).</label>
+
+                        <div class="pf-c-input-group" dir="ltr">
+                            <input tabindex="3" id="password" class="pf-c-form-control" name="password" type="password" autocomplete="current-password"
+                                   aria-invalid=""
+                            />
+                            <button class="pf-c-button pf-m-control" type="button" aria-label="Mostrar palavra-passe"
+                                    aria-controls="password" data-password-toggle tabindex="4"
+                                    data-icon-show="fa fa-eye" data-icon-hide="fa fa-eye-slash"
+                                    data-label-show="Mostrar palavra-passe" data-label-hide="Esconder palavra-passe">
+                                <i class="fa fa-eye" aria-hidden="true"></i>
+                            </button>
+                        </div>
+
+
+                    </div>
+
+                    <div class="form-group login-pf-settings">
+                        <div id="kc-form-options">
+                                <div class="checkbox">
+                                    <label>
+                                            <input tabindex="5" id="rememberMe" name="rememberMe" type="checkbox"> Mantenha-me conectado
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="">
+                                    <span><a tabindex="6" href="https://paxtu100.escoteiros.org.br/esqueci_senha">Esqueceu sua senha?</a></span>
+                              
+                            </div>
+                      </div>
+		      <div style="display: flex;flex-direction: row-reverse;"><a tabindex="6" href="https://paxtu100.escoteiros.org.br/primeiro_acesso">PRIMEIRO ACESSO? CLIQUE AQUI</a></div>
+                      <div id="kc-form-buttons" class="form-group">
+                          <input type="hidden" id="id-hidden-input" name="credentialId" />
+                          <input tabindex="7" class="pf-c-button pf-m-primary pf-m-block btn-lg" name="login" id="kc-login" type="submit" value="Entrar"/>
+                      </div>
+                </form>
+            </div>
+        </div>
+        <script type="ef90d34b614fa9a53184e21e-module" src="/resources/rwlz9/login/escoteiros_tema/js/passwordVisibility.js"></script>
+
+
+
+            <div id="kc-social-providers" class="kc-social-section kc-social-gray">
+                <hr/>
+                <h2>Ou entre com</h2>
+
+                <ul class="pf-c-login__main-footer-links kc-social-links ">
+                        <li>
+                            <a id="social-google" class="button-rounded pf-m-block kc-social-item kc-social-gray "
+                                    type="button" href="/realms/paxtu/broker/google/login?client_id=azimute&amp;tab_id=8o9rgM1GUEg&amp;client_data=eyJydSI6Imh0dHBzOi8vcGF4dHUxMDAuZXNjb3RlaXJvcy5vcmcuYnIvYXV0aC9rZXljbG9hay9jYWxsYmFjayIsInJ0IjoiY29kZSIsInN0IjoieVFaY1J2OXNyR2w3WG9OcllZRjFVeWRpUnpFZzd0M0JHcEg5STRrcCJ9&amp;session_code=WP8NqFGOhslwXPEl1wPxWavbaXMPLPVbbeilYC3fmiE">
+                                    <i class="kc-social-provider-logo  fa fa-google" aria-hidden="true"></i>
+                                    <span class="kc-social-provider-name kc-social-icon-text">Google</span>
+                            </a>
+                        </li>
+                </ul>
+            </div>
+
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+<script src="/cdn-cgi/scripts/7d0fa10a/cloudflare-static/rocket-loader.min.js" data-cf-settings="ef90d34b614fa9a53184e21e-|49" defer></script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1b549d53b66f19c',t:'MTc4NDA4MjAzMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

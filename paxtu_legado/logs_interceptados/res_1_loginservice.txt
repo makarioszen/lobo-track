@@ -1,0 +1,1 @@
+//OK[1,["{\"cdUsuario\":\"73070\",\"dsIp\":\"2804:1b3:a242:a782:1ddb:d553:ea97:c7d2\",\"nmUsuario\":\"MarcoMartins\",\"hrLogin\":\"14/07/2026 22:23\",\"idUsuarioLog\":\"11404934\"}"],0,7]

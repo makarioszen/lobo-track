@@ -1,0 +1,1 @@
+//OK[1,["{ \"totalCount\" : 3, \"data\":[{\"nrGrupo\":\"046\",\"dtValidade\":\"2025\",\"cdRegiao\":\"SP\",\"flSocioCarente\":\"false\"},{\"nrGrupo\":\"046\",\"dtValidade\":\"2024\",\"cdRegiao\":\"SP\",\"flSocioCarente\":\"false\"},{\"nrGrupo\":\"046\",\"dtValidade\":\"2023\",\"cdRegiao\":\"SP\",\"flSocioCarente\":\"false\"}]}"],0,7]

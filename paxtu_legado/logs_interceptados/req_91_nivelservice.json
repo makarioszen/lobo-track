@@ -1,0 +1,15 @@
+{
+  "id": 91,
+  "timestamp": "2026-07-15T01:23:35.861Z",
+  "url": "https://paxtu.escoteiros.org.br/paxtu/br.com.wallis.sgg.EntryPointPrincipal/rpc/nivelservice",
+  "method": "POST",
+  "headers": {
+    "x-gwt-permutation": "E0CAF052CC10CF07C17AA5F96BCD3E44",
+    "x-gwt-module-base": "https://paxtu.escoteiros.org.br/paxtu/br.com.wallis.sgg.Sgg/",
+    "referer": "https://paxtu.escoteiros.org.br/paxtu/main.do",
+    "accept-language": "pt-BR,pt;q=0.9",
+    "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+    "content-type": "text/x-gwt-rpc; charset=UTF-8"
+  },
+  "postData": "7|0|4|https://paxtu.escoteiros.org.br/paxtu/br.com.wallis.sgg.Sgg/|70D1749ED3C8B43F93BF03FF5A433C41|br.com.wallis.sgg.client.rpc.NivelService|getNiveis|1|2|3|4|0|"
+}
