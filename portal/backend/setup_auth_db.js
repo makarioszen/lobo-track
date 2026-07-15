@@ -31,6 +31,12 @@ async function setupAuthDatabase() {
       );
     `;
 
+    // Garante que as novas colunas existam caso a tabela já tenha sido criada anteriormente
+    await sql`ALTER TABLE usuarios_sistema ADD COLUMN IF NOT EXISTS cargo VARCHAR(50) NOT NULL DEFAULT 'chefe';`;
+    await sql`ALTER TABLE usuarios_sistema ADD COLUMN IF NOT EXISTS secao_id INT NOT NULL DEFAULT 11009;`;
+    await sql`ALTER TABLE usuarios_sistema ADD COLUMN IF NOT EXISTS secao_nome VARCHAR(255) NOT NULL DEFAULT 'Alcateia Waingunga';`;
+    await sql`ALTER TABLE usuarios_sistema ADD COLUMN IF NOT EXISTS aprovado BOOLEAN NOT NULL DEFAULT FALSE;`;
+
     // 2. Criar tabela de status de sincronização
     console.log('Criando tabela sync_status...');
     await sql`
